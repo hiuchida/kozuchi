@@ -34,6 +34,14 @@ class Deal::Base < ApplicationRecord
     where("account_entries.account_id = ?", account_id)
   }
 
+  def balance?
+    false
+  end
+
+  def general?
+    false
+  end
+
   def human_name
     "記入 #{I18n.l(date)}-#{daily_seq}"
   end
@@ -195,7 +203,7 @@ class Deal::Base < ApplicationRecord
     return if self[:date] # あるならそのまま
     
     begin
-      self[:date] = Date.new(self.year.to_i, self.month.to_i, self.day.to_i)
+      self[:date] = Date.new(self.year.to_i, self.month.to_i, self.day.to_i) # TODO: year は 不正な文字でも 0年として登録される
     rescue
       self[:date] = nil
     end

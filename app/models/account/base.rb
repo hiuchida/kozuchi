@@ -1,4 +1,3 @@
-# -*- encoding : utf-8 -*-
 require 'builder/xmlmarkup' # TODO:
 
 class Account::Base < ApplicationRecord
@@ -13,6 +12,25 @@ class Account::Base < ApplicationRecord
   has_many :deals,  ->{ order(:date, :daily_seq) }, through: :entries
 
   has_many :result_settlements, through: :entries
+
+  scope :active,   -> { where(active: true) }
+  scope :inactive, -> { where(active: false) }
+
+  def asset?
+    false
+  end
+
+  def expense?
+    false
+  end
+
+  def income?
+    false
+  end
+
+  def any_credit?
+    false
+  end
 
   def self.has_kind?
     false
