@@ -13,8 +13,14 @@ class Account::Base < ApplicationRecord
 
   has_many :result_settlements, through: :entries
 
-  scope :active,   -> { where(active: true) }
-  scope :inactive, -> { where(active: false) }
+  scope :active,     -> { where(active: true) }
+  scope :inactive,   -> { where(active: false) }
+
+  scope :expense,           -> { where(type: "Account::Expense") }
+
+  # TODO: with_joined_scope 相当
+  scope :join_entries_and_deals, -> { joins("inner join account_entries on accounts.id = account_entries.account_id inner join deals on account_entries.deal_id = deals.id") }
+  scope :join_confirmed_entries, -> { joins(sanitize_sql_array(["INNER JOIN account_entries on accounts.id = account_entries.account_id AND account_entries.confirmed = ?", TRUE])) }
 
   def asset?
     false
@@ -34,6 +40,16 @@ class Account::Base < ApplicationRecord
 
   def self.has_kind?
     false
+  end
+
+  # flow_sum を関連起点で無くした版
+  # 指定した期間における指定した口座のフロー合計を得る。end_date は exclusive なので注意
+  def self.total_flow(start_date, end_date)
+    join_confirmed_entries.merge(Entry::Base.in_a_time_between(start_date, end_date).not_initial_balance).sum("account_entries.amount").to_i
+  end
+
+  def total_flow(start_date, end_date)
+    self.class.where(id: id).total_flow(start_date, end_date)
   end
 
   # この勘定の残高記入を日時のはやいほうからsaveしなおしていくことで、残高計算を正しくする
@@ -191,7 +207,18 @@ class Account::Base < ApplicationRecord
   end
 
   # 口座別計算メソッド
-  
+
+  # NOTE: 最新版...^^;
+  # TODO: 資産合計はこれを使ったほうがはやそう
+  def self.balance_before_date(date)
+    join_confirmed_entries.merge(Entry::Base.before_or_initial(date)).sum(:amount) || 0
+  end
+
+  # おそらく balance_before とほぼ同じ
+  def balance_before_date(date)
+    self.class.where(id: id).balance_before_date(date)
+  end
+
   # 指定された日付より前の時点での残高を計算して balance に格納する
   def balance_before(date, daily_seq = 0, ignore_initial = false)
 #    p "balance_before : #{date.to_s(:db)} - #{daily_seq} : #{ignore_initial}"
