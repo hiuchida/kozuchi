@@ -1,6 +1,6 @@
 - gadget ||= false
 %table.book.settlements_summary
-  - unless @settlement_summaries.target_account
+  - unless gadget
     %tr
       %th
       - @settlement_summaries.years.each do |year, months|
@@ -36,7 +36,7 @@
           - if unsettled_entries_amount
             = number_with_delimiter(unsettled_entries_amount)
             %br
-            = link_to '作成', new_account_settlement_path(account_id: account.id, year: monthly_date.year, month: monthly_date.month), class: %w(btn btn-sm) + [unsaved_settlement(account, monthly_date.year, monthly_date.month).present? ? 'btn-warning' : 'btn-default']
+            = link_to '作成', new_account_settlement_path(account_id: account.id, year: monthly_date.year, month: monthly_date.month), class: %w(btn btn-sm) + [settlement_source(account, monthly_date.year, monthly_date.month).present? ? 'btn-warning' : 'btn-default']
             - shown = true
           - unless shown
             &nbsp;
