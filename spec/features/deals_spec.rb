@@ -1,9 +1,8 @@
 # -*- encoding : utf-8 -*-
 require 'spec_helper'
 
-describe DealsController do
+describe DealsController, type: :feature do
   fixtures :users, :accounts, :preferences
-  set_fixture_class  :accounts => Account::Base
 
   # 一覧
   describe "/deals/2012/7" do
@@ -13,23 +12,20 @@ describe DealsController do
         visit "/deals/2012/7"
       end
       it "明細表示領域がある" do
-        page.should have_css('div#monthly_contents')
-      end
-      it "明細入力欄がある" do
-        page.should have_css('input#deal_summary')
+        expect(page).to have_css('div#monthly_contents')
       end
       it "日ナビゲーターがある" do
-        page.should have_css('#day_navigator')
+        expect(page).to have_css('#day_navigator')
       end
     end
 
     context "with one balance deal" do
       before do
-        FactoryGirl.create(:balance_deal, :date => Date.new(2012, 7, 20))
+        create(:balance_deal, :date => Date.new(2012, 7, 20))
         visit "/deals/2012/7"
       end
       it do
-        page.should have_content("2012/07/20")
+        expect(page).to have_content("2012/07/20")
       end
     end
   end
@@ -44,21 +40,21 @@ describe DealsController do
     context "when no deal with the keyword exists" do
       before do
         fill_in 'keyword', :with => 'test'
-        click_button('明細を検索')
+        click_button('検索')
       end
       it do
-        page.should have_content("「test」を含む明細は登録されていません。")
+        expect(page).to have_content("「test」を含む明細は登録されていません。")
       end
     end
 
     context "when one deal with the keyword exists" do
       before do
-        @deal = FactoryGirl.create(:general_deal, :date => Date.new(2012, 7, 10))
+        @deal = create(:general_deal, :date => Date.new(2012, 7, 10))
         fill_in 'keyword', :with => 'ランチ'
-        click_button('明細を検索')
+        click_button('検索')
       end
       it do
-        page.should have_content("「ランチ」を含む明細は1件あります。")
+        expect(page).to have_content("「ランチ」を含む明細は1件あります。")
       end
     end
   end

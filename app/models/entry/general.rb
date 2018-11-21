@@ -4,7 +4,6 @@ class Entry::General < Entry::Base
              :class_name => 'Deal::General',
              :foreign_key => 'deal_id'
   belongs_to :settlement
-  belongs_to :result_settlement, :class_name => 'Settlement', :foreign_key => 'result_settlement_id'
 
   include ::Entry
 
@@ -12,6 +11,14 @@ class Entry::General < Entry::Base
   before_destroy :assert_no_settlement
 
   attr_writer :partner_account_name # 相手勘定名
+
+  scope :recent_summaries, ->(keyword) {
+    select("summary, max(deal_id) as deal_id"
+    ).group("summary"
+    ).where("summary like ?", "#{keyword}%"
+    ).order("deal_id desc"
+    ).limit(5)
+  }
 
   def partner_account_name
     @parter_account_name ||= deal.partner_account_name_of(self)

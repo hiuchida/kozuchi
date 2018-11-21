@@ -1,4 +1,3 @@
-# -*- encoding : utf-8 -*-
 class Account::Asset < Account::Base
 
   BASIC_KINDS = {
@@ -17,6 +16,34 @@ class Account::Asset < Account::Base
     raise "You must specify at least one kind for Account::Asset.categorized_as" if kinds.empty?
     where("accounts.asset_kind in (?)", kinds)
   }
+
+  with_options foreign_key: "settlement_target_account_id", class_name: "Account::Asset" do |s|
+    s.belongs_to :settlement_paid_from
+    s.has_many   :settlement_paid_for, dependent: :nullify # 自分が消されたら、自分を精算口座にしているカードの精算口座をnilにする
+  end
+
+  # クレジットカード用 デフォルトの記入探索期間を返す
+  def term_for_settlement_paid_on(monthly_date)
+    end_month = monthly_date.beginning_of_month << settlement_closed_on_month
+    end_date = [end_month + (settlement_closed_on_day - 1), end_month.end_of_month].min
+    start_date = (end_date << 1) - settlement_term_margin
+
+    [start_date, end_date]
+  end
+
+  def asset?
+    true
+  end
+
+  def self.has_kind?
+    true
+  end
+
+  # TODO: 翻訳を使う感じにしたい
+  def human_asset_kind
+    attributes = BASIC_KINDS[asset_kind.to_sym]
+    attributes ? attributes[:name] : nil
+  end
 
   def capital_fund?
     asset_kind == "capital_fund"
@@ -80,17 +107,6 @@ class Account::Asset < Account::Base
     super
   end
 
-  def self.asset_name(asset_name = nil)
-    return @asset_name unless asset_name
-    @asset_name = asset_name
-  end
-  
-  # 口座種類名からクラスを得る。
-  # asset_name:: 口座種類名
-  def self.asset_name_to_class(asset_name)
-    types.detect{|a| a.asset_name == asset_name}  
-  end
-
   # ---------- 機能
 
   validate :validates_partner_account
@@ -101,11 +117,6 @@ class Account::Asset < Account::Base
       self.create(:user_id => user_id, :name => name, :asset_kind => asset_kind.to_s, :sort_key => sort_key)
       sort_key += 1
     end
-  end
-
-
-  def asset_name
-    self.class.asset_name
   end
 
   private

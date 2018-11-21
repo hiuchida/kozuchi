@@ -1,10 +1,9 @@
 # -*- encoding : utf-8 -*-
 # ユーザーに紐づくロジックは多いので、機能別にモジュールを記述してincludeする
 require 'digest/sha1'
-class User < ActiveRecord::Base
+class User < ApplicationRecord
   require 'user/friend' # TODO: User::Friendのincludeが(少なくともdevelopmentモードで)エラーになるため応急措置
   include User::Friend
-  include User::Mobile
 
   delegate :bookkeeping_style?, :to => :preferences
 
@@ -43,20 +42,22 @@ class User < ActiveRecord::Base
 
     # 指定した日の最初における指定した口座の残高合計を得る
     def balance_sum(date, conditions = nil)
-      with_joined_scope(conditions) do
-        where("(deals.confirmed = ? and deals.date < ?) or account_entries.initial_balance = ?", true, date, true).sum("account_entries.amount").to_i
-      end
+      where(conditions)
+          .join_entries_and_deals
+          .where("(deals.confirmed = ? and deals.date < ?) or account_entries.initial_balance = ?", true, date, true)
+          .sum("account_entries.amount")
+          .to_i
     end
     
     # 指定した日の最初における指定した口座の残高をAccountモデルの一覧として得る
     def balances(date, conditions = nil)
-      with_joined_scope(conditions) do
-        select("accounts.*, sum(account_entries.amount) as balance"
-        ).includes(nil
-        ).where("(deals.confirmed = ? and deals.date < ?) or account_entries.initial_balance = ?", true, date, true
-        ).group('accounts.id'
-        ).each{|a| a.balance = a.balance.to_i }
-      end
+      where(conditions)
+          .join_entries_and_deals
+          .select("accounts.*, sum(account_entries.amount) as balance")
+          .includes(nil)
+          .where("(deals.confirmed = ? and deals.date < ?) or account_entries.initial_balance = ?", true, date, true)
+          .group('accounts.id')
+          .each{|a| a.balance = a.balance.to_i }
     end
     
     # 指定した期間における収入口座のフロー合計を得る。収入の不明金も含める。
@@ -67,42 +68,51 @@ class User < ActiveRecord::Base
     end
 
     # 指定した期間における支出口座のフロー合計を得る。支出の不明金も含める。
+    # end_date は exclusive
+    # NOTE: 不明金は正負逆転するとか、正負をそれぞれよせるかまとめてよせるかなどがあり、SQL一発でやるのは難しい
+    #   例えば 擬似的に views を作り、asset 勘定ごとに任意の方向で amount がとれるようにするといいのかもしれない
+    #   不明金を合体させて扱うのは総合的なところに限られるので、Accountクラスに引っ越す必要性は高くなさそう
     def expense_sum(start_date, end_date)
-      result = flow_sum(start_date, end_date, "accounts.type = 'Account::Expense'")
+#      TODO: 旧 flow_sum から 新 total_flow （accounts関連から accountsクラスメソッド系へ）へ移行中。参考のため残しておく
+#      result = flow_sum(start_date, end_date, "accounts.type = 'Account::Expense'")
+      result = expense.total_flow(start_date, end_date-1) # inclusive に修正...
       unknowns(start_date, end_date).delete_if{|a| a.unknown <= 0}.each{|a| result += a.unknown}
       result
     end
     
     # 指定した期間における指定した口座のフロー合計を得る。不明金は扱わない。
     def flow_sum(start_date, end_date, conditions = nil)
-      with_joined_scope(conditions) do
-        where("deals.confirmed = ? and deals.date >= ? and deals.date < ? and account_entries.initial_balance != ?", true, start_date, end_date, true).sum("account_entries.amount").to_i
-      end
+      where(conditions)
+          .join_entries_and_deals
+          .where("deals.confirmed = ? and deals.date >= ? and deals.date < ? and account_entries.initial_balance != ?", true, start_date, end_date, true)
+          .sum("account_entries.amount")
+          .to_i
     end
     
     # 指定した期間における指定した口座のフローをAccountモデルの一覧として得る。flowカラムに格納される。
     # 資産口座の不明金を結果に足すことはしない。
     # 記入のない口座は取得されない。
     def flows(start_date, end_date, conditions = nil)
-      with_joined_scope(conditions) do
-        select("accounts.*, sum(account_entries.amount) as flow"
-        ).includes(nil
-        ).where("deals.confirmed = ? and deals.date >= ? and deals.date < ? and account_entries.initial_balance != ?", true, start_date, end_date, true
-        ).group('accounts.id'
-        ).each{|a| a.flow = a.flow.to_i}
-      end
+      where(conditions)
+          .join_entries_and_deals
+          .select("accounts.*, sum(account_entries.amount) as flow")
+          .includes(nil)
+          .where("deals.confirmed = ? and deals.date >= ? and deals.date < ? and account_entries.initial_balance != ?", true, start_date, end_date, true)
+          .group('accounts.id')
+          .to_a.each{|a| a.flow = a.flow.to_i}
     end
 
     # 指定した期間における指定した口座の不明金を Accountモデルの一覧として得る。不明金は unknown カラムに格納される。
     # 不明金勘定の視点から、正負は逆にする。つまり、支出の不明金はプラスで出る。
     def unknowns(start_date, end_date, conditions = nil)
-      with_joined_scope(conditions) do
-        select("accounts.*, sum(account_entries.amount) as unknown"
-        ).includes(nil
-        ).where("deals.type = 'Deal::Balance' and deals.confirmed = ? and deals.date >= ? and deals.date < ? and account_entries.initial_balance != ?", true, start_date, end_date, true
-        ).group('accounts.id'
-        ).each{|a| a.unknown = a.unknown.to_i; a.unknown *= -1 }
-      end
+      where(conditions)
+          .join_entries_and_deals
+          .select("accounts.*, sum(account_entries.amount) as unknown")
+          .includes(nil)
+          .where("deals.type = 'Deal::Balance' and deals.confirmed = ? and deals.date >= ? and deals.date < ? and account_entries.initial_balance != ?", true, start_date, end_date, true)
+          .group('accounts.id')
+          .to_a.each{|a| a.unknown = a.unknown.to_i; a.unknown *= -1 }
+        # Rails5.0にあげたとき、to_a をはさまずに each すると結果が frozen になってしまった
     end
   
     # 指定した account_type のものだけを抽出する
@@ -112,12 +122,6 @@ class User < ActiveRecord::Base
 #      self.select{|a| account_types.detect{|t| a.type_in?(t)} }
 #    end
     
-    private
-    def with_joined_scope(conditions, &block)
-      where(conditions).joins("inner join account_entries on accounts.id = account_entries.account_id inner join deals on account_entries.deal_id = deals.id").scoping do
-        yield
-      end
-    end
   end
 
   after_create :create_defaults
@@ -148,7 +152,8 @@ class User < ActiveRecord::Base
   has_many :general_deals, :class_name => "Deal::General", :foreign_key => "user_id"
   has_many :balance_deals, :class_name => "Deal::Balance", :foreign_key => "user_id"
 
-  has_many :entries, :class_name => "Entry::Base"
+  has_many :entries,         class_name: "Entry::Base"
+  has_many :general_entries, class_name: "Entry::General"
   
   def default_asset
     assets.first
@@ -186,17 +191,16 @@ class User < ActiveRecord::Base
   # Virtual attribute for the unencrypted password
   attr_accessor :password
 
-  validates_presence_of     :login, :email
-  validates_presence_of     :password,                   :if => :password_required?
-  validates_presence_of     :password_confirmation,      :if => :password_required?
-  validates_length_of       :password, :within => 4..40, :if => :password_required?
-  validates_confirmation_of :password,                   :if => :password_required?
-  validates_length_of       :login,    :within => 3..40
-  validates_length_of       :email,    :within => 3..100
-  validates_uniqueness_of   :login, :email, :case_sensitive => false
+  validates :login, presence: true, length: {within: 3..40,  allow_blank: true}, uniqueness: {case_sensitive: false, allow_blank: true}
+  validates :email, presence: true, length: {within: 3..100, allow_blank: true}, uniqueness: {case_sensitive: false, allow_blank: true}
+
+  with_options if: :password_required? do |req|
+    req.validates :password,              presence: true, length: {within: 4..40,  allow_blank: true}, confirmation: true
+    req.validates :password_confirmation, presence: true
+  end
+
   before_save :encrypt_password
   before_create :make_activation_code
-#  attr_accessible :login, :email, :password, :password_confirmation
   after_destroy :destroy_deals, :destroy_accounts
 
   # Activates the user in the database.
@@ -346,18 +350,31 @@ class User < ActiveRecord::Base
 
   
   def recent(months, &block)
+    recent_from(Date.today, months, &block)
+  end
+
+  def recent_from(start_date, months, &block)
     result = []
     dates = []
-    today = Date.today
-    day = today << (months-1)
-    while(day <= Date.today)
+    day = start_date << (months-1)
+    while(day <= start_date)
       result << yield(self, day)
       dates << day
       day >>= 1
     end
     [result, dates]
   end
-  
+
+  # 最古の記入のある年
+  def start_year
+    @start_year ||= entries.minimum(:date).year
+  end
+
+  # 最古の記入のある年、古すぎるときは100年前
+  def pragmatic_start_year
+    [start_year, Time.zone.now.year - 100].max
+  end
+
   protected
   # before filter 
   def encrypt_password

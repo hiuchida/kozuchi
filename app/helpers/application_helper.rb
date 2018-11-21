@@ -3,6 +3,20 @@ module ApplicationHelper
 
   include LoginEngine
 
+  def date_selector_options
+    (1..31).map{|day| [day, day]}
+  end
+
+  def setting_account_path(account)
+    send("settings_#{account.class.to_sym.to_s}_path", id: account.id)
+  end
+
+  def active_class_if(condition, classes = [])
+    classes << 'active' if condition
+    classes
+  end
+
+
   # 現在の機能によってシングルログインでアカウント移動時の移動先識別子を返す
   def single_login_destination
     if controller_name == 'deals' && action_name == 'monthly'
@@ -13,12 +27,7 @@ module ApplicationHelper
   end
 
   def day_anchor(date)
-    tag :a, :name => "day#{date.day}"
-  end
-
-  def bookkeeping_style?
-    return false unless current_user
-    current_user.preferences.bookkeeping_style?
+    tag :span, :id => "day#{date.day}"
   end
 
   # deals などで副項目を扱う

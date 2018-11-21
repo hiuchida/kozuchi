@@ -2,9 +2,8 @@
 require File.expand_path(File.dirname(__FILE__) + '/../../spec_helper')
 require File.expand_path(File.dirname(__FILE__) + '/../../controller_spec_helper')
 
-describe Settings::PartnerAccountsController do
+describe Settings::PartnerAccountsController, type: :controller do
   fixtures :users, :accounts
-  set_fixture_class :accounts => 'Account::Base'
 
   before do
     login_as :taro
@@ -15,7 +14,7 @@ describe Settings::PartnerAccountsController do
   describe "index" do
     it "成功する" do
       get :index
-      response.should be_success
+      expect(response).to be_successful
     end
   end
 
@@ -26,15 +25,15 @@ describe Settings::PartnerAccountsController do
     it "まだない場合に設定できる" do
       violate '前提エラー' if @account.partner_account_id
 
-      put :update, :account_id => @account.id, :account => {:partner_account_id => :taro_bank.to_id}
+      put :update, params: {:account_id => @account.id, :account => {:partner_account_id => :taro_bank.to_id}}
 
-      response.should redirect_to(settings_partner_accounts_path)
+      expect(response).to redirect_to(settings_partner_accounts_path)
       @account.reload
-      @account.partner_account_id.should == :taro_bank.to_id
+      expect(@account.partner_account_id).to eq :taro_bank.to_id
     end
     it "ほかのユーザーの勘定に対して設定できない" do
 
-      lambda{ put :update, :account_id => :hanako_taro.to_id }.should raise_error(ActiveRecord::RecordNotFound)
+      expect { put :update, params: {:account_id => :hanako_taro.to_id} }.to raise_error(ActiveRecord::RecordNotFound)
     end
   end
 

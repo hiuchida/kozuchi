@@ -1,0 +1,39 @@
+@import 'variables.scss';
+
+#day_navigator_frame {
+  background-color:
+  #ffffff;
+  line-height: 12px;
+  font-size: 10px;
+  width: 50px;
+
+  #day_navigator {
+    border-collapse: collapse;
+    margin-right: 10px;
+    margin-bottom: 16px;
+
+    td.year_month {
+      text-align: right;
+      padding-bottom: 4px;
+    }
+    td.day {
+      padding: 2px 2px;
+      text-align: right;
+
+      div a {
+        color: black;
+        text-decoration: none;
+      }
+
+      div.cwday6, div.cwday6 a {
+        color: blue;
+      }
+      div.cwday7, div.cwday7 a {
+        color: red;
+      }
+      div.today {
+        background-color: yellow;
+      }
+    }
+  }
+}

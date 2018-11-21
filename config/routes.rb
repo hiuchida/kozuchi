@@ -6,18 +6,15 @@ Kozuchi::Application.routes.draw do
 
   # settings
   namespace :settings do
-    controller :incomes do
-      put 'incomes', :action => :update_all
-      resources :incomes
+    controller :accounts do
+      %w(asset income expense).each do |type|
+        with_options account_type: type do |with_type|
+          with_type.put type.pluralize, :action => :update_all
+          with_type.resources type.pluralize, controller: :accounts, only: [:index, :show, :create, :update, :destroy]
+        end
+      end
     end
-    controller :expenses do
-      put 'expenses', :action => :update_all
-      resources :expenses
-    end
-    controller :assets do
-      put 'assets', :action => :update_all
-      resources :assets
-    end
+
     # 連携
     resources :account_link_requests, :path => 'accounts/:account_id/link_requests', :only => [:destroy]
 
@@ -71,6 +68,7 @@ Kozuchi::Application.routes.draw do
         get 'search'
       end
     end
+    get 'deals/:id/edit/deal_pattern/:pattern_code', as: :deal_pattern_in_edit, action: :load_deal_pattern_into_edit
     # :sub_resources => {:entries => {:only => [:create]}}
     # postだけにしたいが構造上 put のフォームの中から呼ばれて面倒なので
     match 'deals/:id/entries', :action => 'create_entry', :as => :deal_entries, :via => [:post, :patch]
@@ -78,8 +76,12 @@ Kozuchi::Application.routes.draw do
     ['general', 'balance', 'complex'].each do |t|
       post "#{t}_deals", :action => "create_#{t}_deal", :as => :"#{t}_deals"
       get "#{t}_deals/new", :action => "new_#{t}_deal", :as => :"new_#{t}_deal"
+      post "accounts/:account_id/#{t}_deals", :action => "create_#{t}_deal", :as => :"account_#{t}_deals"
+      get "accounts/:account_id/#{t}_deals/new", :action => "new_#{t}_deal", :as => :"new_account_#{t}_deal"
     end
 
+    get 'deals/:year/:month/days', :as => :monthly_deal_days, :action => 'day_navigator'
+    get 'accounts/:account_id/deals/:year/:month', as: :monthly_account_deals, action: :monthly
     # TODO: なぜか page.redirect_to redirect_options_proc.call(@deal) でrequirements があるとうまくいかない
     get 'deals/:year/:month', :as => :monthly_deals, :action => 'monthly' #, :requirements => YEAR_MONTH_REQUIREMENTS
   end
@@ -87,48 +89,36 @@ Kozuchi::Application.routes.draw do
   # DealSuggestionsController
   resources :deal_suggestions, :path => 'deals/suggestions', :only => [:index]
 
-  resource :mobile_device, :controller => :mobiles do
-    member do
-      get 'confirm_destroy'
-    end
-  end
-
   get '/home' => 'home#index', :as => :home
 
   resource :user
 
   # SettlementsController
   controller :settlements do
-    get 'settlements/new/target_deals', :as => :new_settlement_target_deals, :action => :target_deals
-    get 'settlements/accounts/:account_id', :as => :account_settlements, :action => :index
-    resources :settlements, :only => [:index, :show, :new, :create, :destroy] do
+    scope path: 'accounts/:account_id' do
+      get 'settlements/new/:year/:month', as: :new_account_settlement, action: :new
+      put 'settlements/new/:year/:month', :action => :update_source
+      post 'settlements/new/:year/:month/deals', as: :new_account_settlement_deals, :action => :select_all_deals_in_source
+      delete'settlements/new/:year/:month/deals', :action => :remove_all_deals_in_source
+      delete 'settlements/new/:year/:month', action: :destroy_source
+      post 'settlements/:year/:month', as: :account_settlements, action: :create
+      get  'settlements/:year/:month', action: :summary
+    end
+    resources :settlements, :only => [:show, :destroy] do
       member do
         get 'print_form'
         put 'submit'
       end
     end
-  end
-
-  # AccountDealsController
-  # TODO: deal をつけるのがうざいがバッティングがあるためいったんつける
-  controller :account_deals do
-    resources :account_deals, :path => 'accounts/deals', :only => [:index]
-    scope :path => 'accounts/:account_id' do
-      get 'deals/:year/:month', :as => :monthly_account_deals, :action => 'monthly'# TODO: なぜかあるとうまくいかない, :requirements => YEAR_MONTH_REQUIREMENTS
-      get 'balance', :as => :account_balance, :action => :balance
-      post 'general_deals', :as => :account_general_deals, :action => 'create_general_deal'
-      ['creditor_general_deal', 'debtor_general_deal', 'balance_deal'].each do |t|
-        post "#{t.pluralize}", :as => "account_#{t.pluralize}", :action => "create_#{t}"
-        get "new_#{t}", :as => "new_account_#{t}", :action => "new_#{t}"
-        get "#{t.pluralize}/:id", :as => "edit_account_#{t}", :action => "edit_#{t}"
-      end
-    end
+    get 'settlements/:year/:month', as: :settlements, action: :summary
   end
 
   # AssetsController
-  controller :assets, :path => 'f' do # /assets はじまりは無視されるため
-    get 'assets/:year/:month', {:as => :monthly_assets, :action => :monthly}.merge(YEAR_MONTH_REQUIREMENTS)
-    resources :assets, :only => [:index]
+  controller :assets do
+    scope :path => 'f' do # /assets はじまりは無視されるため
+      get 'assets/:year/:month', {:as => :monthly_assets, :action => :monthly}.merge(YEAR_MONTH_REQUIREMENTS)
+      resources :assets, :only => [:index]
+    end
   end
 
   # BalanceSheetController
@@ -143,14 +133,6 @@ Kozuchi::Application.routes.draw do
     get 'profit_and_loss/:year/:month', {:as => :monthly_profit_and_loss, :action => 'monthly'}.merge(YEAR_MONTH_REQUIREMENTS)
   end
 
-  # MobileDealsController
-  scope :controller => 'mobile_deals', :path => 'mobile' do
-    get 'expenses/:year/:month/:day', :as => :mobile_daily_expenses, :action => 'daily_expenses'
-    get 'deals/general/new', :as => :new_mobile_general_deal, :action => 'new_general_deal'
-    post 'deals/general', :as => :mobile_general_deals, :action => 'create_general_deal'
-    get 'deals/created/:year/:month/:day', :as => :daily_created_mobile_deals, :action => 'daily_created'
-  end
-
   # ExportController
   controller :export do
     get 'export', :as => :export, :action => "index"
@@ -159,7 +141,9 @@ Kozuchi::Application.routes.draw do
 
   # HelpController
   controller :help do
-    get 'help/:action'
+    get 'help/index'
+    get 'help/functions'
+    get 'help/faq'
   end
 
 #  # TODO: except sessions,

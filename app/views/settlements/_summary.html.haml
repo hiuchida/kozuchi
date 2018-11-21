@@ -1,0 +1,45 @@
+- gadget ||= false
+%table.book.settlements_summary
+  - unless gadget
+    %tr
+      %th
+      - @settlement_summaries.years.each do |year, months|
+        %th{colspan: months.size}= "#{year}年"
+  %tr
+    - unless gadget
+      %th
+        .pull-right
+          - if @settlement_summaries.previous_target_date
+            = link_to '前へ', {year: @settlement_summaries.previous_target_date.year, month: @settlement_summaries.previous_target_date.month}, class: %w(btn btn-info btn-sm)
+    - @settlement_summaries.months.each do |monthly_date|
+      %th
+        - caption = "#{monthly_date.month}月"
+        - caption << "の精算" if gadget
+        = caption
+    - unless gadget
+      - if @settlement_summaries.next_target_date
+        %th
+          .pull-left
+            = link_to '後へ', {year: @settlement_summaries.next_target_date.year, month: @settlement_summaries.next_target_date.month}, class: %w(btn btn-info btn-sm)
+  - @settlement_summaries.each do |account, account_settlements_per_months|
+    %tr
+      - unless gadget
+        %th
+          = link_to_if !@settlement_summaries.target_account, "#{account.name}の精算", account_settlements_path(account_id: account.id)
+      - account_settlements_per_months.each do |monthly_date, (settlements, unsettled_entries_amount)|
+        %td.settlement{class: monthly_date.year == current_year.to_i && monthly_date.month == current_month.to_i ? "target_month" : nil}
+          - shown = false
+          - if settlements.present?
+            - settlements.each do |s|
+              %div= link_to number_with_delimiter(s.amount), settlement_path(s.id)
+            - shown = true
+          - if unsettled_entries_amount
+            = number_with_delimiter(unsettled_entries_amount)
+            %br
+            = link_to '作成', new_account_settlement_path(account_id: account.id, year: monthly_date.year, month: monthly_date.month), class: %w(btn btn-sm) + [settlement_source_exists?(account, monthly_date.year, monthly_date.month) ? 'btn-warning' : 'btn-default']
+            - shown = true
+          - unless shown
+            &nbsp;
+      - unless gadget
+        - if @settlement_summaries.next_target_date
+          %th{width: "20px;"}

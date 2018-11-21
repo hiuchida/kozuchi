@@ -12,13 +12,13 @@ module ControllerSpecHelper
     describe "ログインしていないとき" do
       before {@request.session[:user_id] = nil}
       before &block
-      it_should_behave_like 'トップページにリダイレクトされる'
+      it_behaves_like 'トップページにリダイレクトされる'
     end
   end
 
-  share_examples_for 'トップページにリダイレクトされる' do
+  shared_examples_for 'トップページにリダイレクトされる' do
     it "トップページにリダイレクトされる" do
-      response.should redirect_to(root_path)
+      expect(response).to redirect_to(root_path)
     end
   end
 

@@ -2,7 +2,7 @@
 require File.expand_path(File.dirname(__FILE__) + '/../../spec_helper')
 require File.expand_path(File.dirname(__FILE__) + '/../../controller_spec_helper')
 
-describe Settings::SingleLoginsController do
+describe Settings::SingleLoginsController, type: :controller do
   fixtures :users, :friend_requests, :friend_permissions
 
   before do
@@ -14,22 +14,22 @@ describe Settings::SingleLoginsController do
   describe "index" do
     it "成功する" do
       get :index
-      response.should be_success
+      expect(response).to be_successful
     end
   end
 
   describe "create" do
     it "成功する" do
-      post :create, :single_login => {:login => 'hanako', :password => 'hanako'}
-      response.should redirect_to(settings_single_logins_path)
-      flash[:errors].should be_nil
-      @current_user.single_logins.find_by(login: 'hanako').should_not be_nil
+      post :create, params: {:single_login => {:login => 'hanako', :password => 'hanako'}}
+      expect(response).to redirect_to(settings_single_logins_path)
+      expect(flash[:errors]).to be_nil
+      expect(@current_user.single_logins.find_by(login: 'hanako')).not_to be_nil
     end
     it "パスワードが違うと成功しない" do
-      post :create, :single_login => {:login => 'hanako', :password => 'hanako2'}
-      response.should be_success
-      assigns(:single_login).errors.should_not be_empty
-      @current_user.single_logins.find_by(login: 'hanako').should be_nil
+      post :create, params: {:single_login => {:login => 'hanako', :password => 'hanako2'}}
+      expect(response).to be_successful
+      expect(assigns(:single_login).errors).not_to be_empty
+      expect(@current_user.single_logins.find_by(login: 'hanako')).to be_nil
     end
   end
 

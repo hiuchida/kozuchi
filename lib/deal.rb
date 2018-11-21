@@ -1,5 +1,54 @@
 # -*- encoding : utf-8 -*-
 module Deal
+
+  module AccountCareExtension
+    [:debtor, :creditor].each do |side|
+      define_method :"#{side}_entries_attributes=" do |attributes|
+        # 金額も口座IDも摘要も入っていないentry情報は無視する
+        attributes = attributes.values if attributes.kind_of?(Hash)
+        attributes.reject!{|value| value[:amount].blank? && value[:reversed_amount].blank? && value[:account_id].blank? && value[:summary].blank?}
+
+        # 更新時は必ずしも ID ではなく、内容で既存のデータと紐づける
+        unless new_record?
+          old_entries = Array.new(send("#{side}_entries").reload)
+
+          # attirbutes の中と引き当てていく
+          matched_old_entries = []
+          matched_new_entries = []
+          not_matched_new_entries = attributes.dup
+          old_entries.each do |old|
+            if matched_hash = not_matched_new_entries.detect{|new_entry_hash| old.matched_with_attributes?(new_entry_hash) }
+              not_matched_new_entries.delete_if{|entry_hash| entry_hash.equal?(matched_hash)}
+              matched_hash[:id] = old.id.to_s # IDを付け替える
+              matched_old_entries << old
+              matched_new_entries << matched_hash
+            end
+          end
+          not_matched_old_entries = old_entries - matched_old_entries
+
+          # 引き当てられなかったhashからは :id をなくす
+          # これにより、account_id の変更を防ぐ
+          not_matched_new_entries.each do |hash|
+            hash[:id] = nil # shallow copyにより attributes 内のhashが直接更新される
+          end
+
+          # 引き当てられなかったold entriesを削除予定にする
+          # 現在の関連のなかの該当オブジェクトにマークする
+          not_matched_old_entries.each do |old|
+            e = send(:"#{side}_entries").detect{|e| e.id == old.id}
+            raise "Could not find entry for 'old'" unless e
+            e.mark_for_destruction
+          end
+        end
+
+        # もとの（空は削除された）attributesを渡す。更新時は中のハッシュのidが加工された状態。
+        super attributes
+      end
+    end
+
+  end
+
+
   SHOKOU = '(諸口)'
 
   module EntriesAssociationExtension
@@ -31,8 +80,8 @@ module Deal
 
         debtor_attributes = deal_attributes[:debtor_entries_attributes]
         creditor_attributes = deal_attributes[:creditor_entries_attributes]
-        debtor_attributes = debtor_attributes.values if debtor_attributes.kind_of?(Hash)
-        creditor_attributes = creditor_attributes.values if creditor_attributes.kind_of?(Hash)
+        debtor_attributes = debtor_attributes.values unless debtor_attributes.kind_of?(Array)
+        creditor_attributes = creditor_attributes.values unless creditor_attributes.kind_of?(Array)
 
         # 借方と借り方に有効なデータが１つだけあるとき
         if debtor_attributes.find_all{|v| v[:account_id]}.size == 1 && creditor_attributes.find_all{|v| v[:account_id]}.size == 1
@@ -50,50 +99,7 @@ module Deal
       end
       alias_method :attributes=, :assign_attributes # NOTE: Rails 4.0.2 これをやらないとattributes=が古いままとなる
 
-      [:debtor, :creditor].each do |side|
-        define_method :"#{side}_entries_attributes_with_account_care=" do |attributes|
-          # 金額も口座IDも摘要も入っていないentry情報は無視する
-          attributes = attributes.values if attributes.kind_of?(Hash)
-          attributes.reject!{|value| value[:amount].blank? && value[:reversed_amount].blank? && value[:account_id].blank? && value[:summary].blank?}
-
-          # 更新時は必ずしも ID ではなく、内容で既存のデータと紐づける
-          unless new_record?
-            old_entries = Array.new(send(:"#{side}_entries", true))
-
-            # attirbutes の中と引き当てていく
-            matched_old_entries = []
-            matched_new_entries = []
-            old_entries.each do |old|
-              if matched_hash = attributes.detect{|new_entry_hash| old.matched_with_attributes?(new_entry_hash) }
-                matched_hash[:id] = old.id.to_s # IDを付け替える
-                matched_old_entries << old
-                matched_new_entries << matched_hash
-              end
-            end
-            not_matched_new_entries = attributes - matched_new_entries
-            not_matched_old_entries = old_entries - matched_old_entries
-
-            # 引き当てられなかったhashからは :id をなくす
-            # これにより、account_id の変更を防ぐ
-            not_matched_new_entries.each do |hash|
-              hash[:id] = nil # shallow copyにより attributes 内のhashが直接更新される
-            end
-
-            # 引き当てられなかったold entriesを削除予定にする
-            # 現在の関連のなかの該当オブジェクトにマークする
-            not_matched_old_entries.each do |old|
-              e = send(:"#{side}_entries").detect{|e| e.id == old.id}
-              raise "Could not find entry for 'old'" unless e
-              e.mark_for_destruction
-            end
-          end
-
-          # もとの（空は削除された）attributesを渡す。更新時は中のハッシュのidが加工された状態。
-          send(:"#{side}_entries_attributes_without_account_care=", attributes)
-        end
-
-        alias_method_chain :"#{side}_entries_attributes=", :account_care
-      end
+      prepend AccountCareExtension
     end
 
   end
@@ -111,21 +117,30 @@ module Deal
     debtor_entries.inject(0){|value, entry| value += entry.amount.to_i}
   end
 
+  # TODO: 関連を消したら名前変更
+  # readonly_entries から計算で求める
+  def readonly_creditor_entries
+    readonly_entries.find_all{|e| e.creditor? }.sort_by(&:line_number)
+  end
+  def readonly_debtor_entries
+    readonly_entries.find_all{|e| !e.creditor? }.sort_by(&:line_number)
+  end
+
   # 借り方勘定名を返す
   def creditor_account_name
-    creditor_entries
-    creditor_entries.size == 1 ? creditor_entries.first.account.try(:name) : SHOKOU
+    readonly_creditor_entries.size == 1 ? readonly_creditor_entries.first.account.try(:name) : SHOKOU
   end
 
   # 貸し方勘定名を返す
   def debtor_account_name
-    debtor_entries # 一度全部とる
-    debtor_entries.size == 1 ? debtor_entries.first.account.try(:name) : SHOKOU
+    readonly_debtor_entries.size == 1 ? readonly_debtor_entries.first.account.try(:name) : SHOKOU
   end
 
   def load(from)
     self.debtor_entries_attributes = from.debtor_entries.map(&:copyable_attributes) #{|e| {:account_id => e.account_id, :amount => e.amount, :summary => e.summary}}
+    debtor_entries.build if debtor_entries.empty?
     self.creditor_entries_attributes = from.creditor_entries.map(&:copyable_attributes) #{|e| {:account_id => e.account_id, :amount => e.amount, :summary => e.summary}}
+    creditor_entries.build if creditor_entries.empty?
     self
   end
 
@@ -147,7 +162,7 @@ module Deal
   end
 
   def active_entries
-    changed? ? (debtor_entries + creditor_entries) : readonly_entries
+    (debtor_entries.loaded? || creditor_entries.loaded?) ? (debtor_entries.find_all{|e| !e.marked_for_destruction? } + creditor_entries.find_all{|e| !e.marked_for_destruction? }) : readonly_entries
   end
 
   def reload

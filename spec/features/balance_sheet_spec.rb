@@ -1,9 +1,8 @@
 # -*- encoding : utf-8 -*-
 require 'spec_helper'
 
-describe BalanceSheetController do
+describe BalanceSheetController, type: :feature do
   fixtures :users, :accounts, :preferences
-  set_fixture_class  :accounts => Account::Base
 
   include_context "太郎 logged in"
 
@@ -13,7 +12,7 @@ describe BalanceSheetController do
 
   describe "メニュー「貸借対照表」のクリック" do
     it "今月の貸借対照表が表示される" do
-      page.should have_content("#{Date.today.year}年#{Date.today.month}月末日の貸借対照表")
+      expect(page).to have_content("#{Date.today.year}年#{Date.today.month}月末日の貸借対照表")
     end
   end
 

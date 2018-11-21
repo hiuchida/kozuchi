@@ -3,7 +3,6 @@ require File.expand_path(File.dirname(__FILE__) + '/../spec_helper')
 
 describe Settlement do
   fixtures :users, :accounts, :account_links, :account_link_requests, :friend_requests, :friend_permissions
-  set_fixture_class  :accounts => Account::Base
 
   before do
     @current_user = users(:taro)
@@ -19,16 +18,16 @@ describe Settlement do
       :name => 'テスト精算2010-5',
       :description => '',
       :result_partner_account_id => :taro_bank.to_id.to_s,
-      :deal_ids => {@deal.id.to_s => '1'},
+      :deal_ids => [@deal.id],
       :result_date => Date.new(2010, 6, 30)
     )
     @settlement.save!
   end
   describe "submit" do
     it "成功する" do
-      lambda{@settlement.submit}.should_not raise_error
+      expect {@settlement.submit}.not_to raise_error
       @settlement.reload
-      @settlement.submitted_settlement.should_not be_nil
+      expect(@settlement.submitted_settlement).not_to be_nil
     end
     context "連携がすべてきれたentryの含まれた精算で" do
       before do
@@ -37,7 +36,7 @@ describe Settlement do
       it "成功する" do
         @settlement.submit
         @settlement.reload
-        @settlement.submitted_settlement.should_not be_nil
+        expect(@settlement.submitted_settlement).not_to be_nil
       end
     end
     context "結果の連携だけがきれたentryの含まれた精算で" do
@@ -50,7 +49,7 @@ describe Settlement do
       it "成功する" do
         @settlement.submit
         @settlement.reload
-        @settlement.submitted_settlement.should_not be_nil
+        expect(@settlement.submitted_settlement).not_to be_nil
       end
     end
   end

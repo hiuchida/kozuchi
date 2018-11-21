@@ -2,9 +2,8 @@
 require File.expand_path(File.dirname(__FILE__) + '/../../spec_helper')
 require File.expand_path(File.dirname(__FILE__) + '/../../controller_spec_helper')
 
-describe Settings::AccountLinksController do
+describe Settings::AccountLinksController, type: :controller do
   fixtures :users, :friend_requests, :friend_permissions, :accounts, :account_links, :account_link_requests
-  set_fixture_class :accounts => 'Account::Base'
 
   before do
     login_as :taro
@@ -15,7 +14,7 @@ describe Settings::AccountLinksController do
   describe "GET 'index'" do
     it "成功する" do
       get :index
-      response.should be_success
+      expect(response).to be_successful
     end
   end
 
@@ -25,19 +24,19 @@ describe Settings::AccountLinksController do
       @target_account_id = Fixtures.identify(:taro_hanako)
     end
     it "成功する" do
-      delete :destroy, :account_id => @target_account_id, :id => @target_id
-      response.should redirect_to(settings_account_links_path)
-      AccountLink.find_by(id: @target_id).should be_nil
+      delete :destroy, params: {:account_id => @target_account_id, :id => @target_id}
+      expect(response).to redirect_to(settings_account_links_path)
+      expect(AccountLink.find_by(id: @target_id)).to be_nil
     end
   end
 
   describe "create" do
-    share_examples_for 'createが成功する' do
+    shared_examples_for 'createが成功する' do
       it "成功する" do
-        post :create, :linked_account_name => '太郎', :account_id => Fixtures.identify(:taro_hanako), :linked_user_login => 'hanako'
-        response.should redirect_to(settings_account_links_path)
-        flash[:errors].should be_nil
-        AccountLink.find_by(account_id: Fixtures.identify(:taro_hanako), target_user_id: Fixtures.identify(:hanako)).should_not be_nil
+        post :create, params: {:linked_account_name => '太郎', :account_id => Fixtures.identify(:taro_hanako), :linked_user_login => 'hanako'}
+        expect(response).to redirect_to(settings_account_links_path)
+        expect(flash[:errors]).to be_nil
+        expect(AccountLink.find_by(account_id: Fixtures.identify(:taro_hanako), target_user_id: Fixtures.identify(:hanako))).not_to be_nil
       end
     end
 
@@ -45,11 +44,11 @@ describe Settings::AccountLinksController do
       before do
         account_links(:taro_to_hanako).destroy
       end
-      it_should_behave_like 'createが成功する'
+      it_behaves_like 'createが成功する'
     end
 
     context "すでにあるとき" do
-      it_should_behave_like 'createが成功する'
+      it_behaves_like 'createが成功する'
     end
   end
 

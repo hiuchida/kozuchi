@@ -1,8 +1,10 @@
 # -*- encoding : utf-8 -*-
 # １口座への１記入を表す
-class Entry::Base < ActiveRecord::Base
+class Entry::Base < ApplicationRecord
   self.table_name = 'account_entries'
   unsavable
+
+  include Booking
 
   MAX_LINE_NUMBER = 999 # 処理の都合上、上限があったほうが安心なため片側最大行数を決める
   
@@ -17,7 +19,9 @@ class Entry::Base < ActiveRecord::Base
 
   belongs_to :user # to_s で使う
 
-  
+  # General だけ関係するが Account::Baseからの関連で利用することを想定してここで定義
+  belongs_to :result_settlement, :class_name => 'Settlement', :foreign_key => 'result_settlement_id'
+
   before_validation :error_if_account_is_is_chanegd # 最初にやる
   validates :account_id, :presence => true
   validate :validate_account_id_is_users
@@ -25,6 +29,7 @@ class Entry::Base < ActiveRecord::Base
   # deal_id, creditor, line_number の一意性はユーザーがコントロールすることではないので検証はせず、DB任せにする
 
   before_save :copy_deal_attributes
+  before_update :set_next_balance_entry_before_move # before_saveより後に呼ばれる
   # check_amount_exists は 派生クラスの before_create (before_saveよりおそい) より後に行う必要があるため after_save で
   after_save :check_amount_exists, :update_balance #, #:request_linking
 
@@ -40,10 +45,14 @@ class Entry::Base < ActiveRecord::Base
   scope :confirmed, -> { where(confirmed: true) }
   scope :date_from, ->(d) { where("date >= ?", d) } # TODO: 名前バッティングで from → date_from にした
   scope :before, ->(d) { where("date < ?", d) }
+  scope :before_or_initial, ->(d) { where("account_entries.date < ? or account_entries.initial_balance = ?", d, true) }
   scope :ordered, -> { order(:date, :daily_seq) }
+  # TODO: on にして deal と仕様を揃えたい
   scope :of, ->(account_id) { where(account_id: account_id) }
   scope :after, ->(e) { where("date > ? or (date = ? and daily_seq > ?)", e.date, e.date, e.daily_seq) }
   scope :in_a_time_between, ->(from, to) { where("account_entries.date >= ? and account_entries.date <= ?", from, to) }
+  scope :not_initial_balance, -> { where(initial_balance: false) }
+  scope :unsettled, -> { where(settlement_id: nil, result_settlement_id: nil) }
 
   delegate :year, :month, :day, :to => :date
 
@@ -63,9 +72,9 @@ class Entry::Base < ActiveRecord::Base
     !!balance
   end
 
-  # StringならString のまま , はとる
+  # StringならString のまま 前後のスペースを削除して , をとる
   def self.parse_amount(value)
-    value.kind_of?(String) ? value.gsub(/,/, '') : value
+    value.kind_of?(String) ? value.strip.gsub(/,/, '') : value
   end
 
   def amount=(a)
@@ -138,12 +147,14 @@ class Entry::Base < ActiveRecord::Base
     errors.add(:account_id, "が不正です。") if !user_id.nil? && account.user_id.to_i != user_id.to_i
   end
 
+  # TODO: Dealからもセットしているので要らないかとおもったが外すと結構動かないので精査が必要
   def copy_deal_attributes
     # 基本的にDealからコピーするがDealがないケースも許容する
     if deal && deal.kind_of?(Deal::General) # TODO: 残高では常に作り直す上にbefore系コールバックでbuildするため、これだと変更処理がうまくいかない
       self.user_id = deal.user_id
       self.date = deal.date
       self.daily_seq = deal.daily_seq
+      self.confirmed = deal.confirmed
     end
     raise "no user_id" unless self.user_id
     raise "no date" unless self.date
@@ -161,11 +172,29 @@ class Entry::Base < ActiveRecord::Base
     raise "#{self.inspect} は精算データ #{(self.settlement || self.result_settlement).inspect} に紐づいているため削除できません。さきに精算データを削除してください。" if self.settlement || self.result_settlement
   end
 
+  # 更新の場合、位置を移動していれば、移動前の位置の直後の残高記入の含み損益にも影響があるので、影響のある残高記入を探しておく
+  def set_next_balance_entry_before_move
+    if date_changed? || daily_seq_changed?
+      @next_balance_entry_before_move = Entry::Balance.of(account_id).after(Entry::Base.find(id)).ordered.includes(:deal).first
+    end
+  end
+
   # 直後の残高記入のamountを再計算する
   def update_balance
     next_balance_entry = Entry::Balance.of(account_id).after(self).ordered.includes(:deal).first
-    return unless next_balance_entry
-    next_balance_entry.deal.update_amount # TODO: 効率
+
+    # 影響を受けた残高は、前から処理しないと、後ろの残高が正しく計算されない
+    balance_entries = [next_balance_entry, @next_balance_entry_before_move].compact.uniq.sort do |a, b|
+      if a.date != b.date
+        a.date <=> b.date
+      else
+        a.daily_seq <=> b.daily_seq
+      end
+    end
+
+    balance_entries.each do |e|
+      e.deal.update_amount
+    end
   end
 
 end

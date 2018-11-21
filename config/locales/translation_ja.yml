@@ -26,9 +26,9 @@ ja:
 
     attributes:
       account/asset:
-        name: "名"  #g
+        name: "口座名"
         sort_key: "ソートキー"  #g
-        asset_kind: "資産の種類"  #g
+        asset_kind: "種別"  #g
         deals: "お得な情報"  #g
         balances: "残高"  #g
         user: "ユーザー"  #g
@@ -39,7 +39,15 @@ ja:
         link_requests: "リンク要求"  #g
 
       account/base:
+        active: "新たな記入に利用する"
+        description: "メモ"
         name: "名"  #g
+        settlement_order_asc: "精算項目を古い順に並べる"
+        settlement_paid_on: "精算支払日"
+        settlement_target_account_id: "精算先口座"
+        settlement_term_margin: "精算範囲"
+        settlement_closed_on_month: "精算締日（月）"
+        settlement_closed_on_day:   "精算締日（日）"
         sort_key: "ソートキー"  #g
         asset_kind: "資産の種類"  #g
         deals: "お得な情報"  #g
@@ -180,7 +188,6 @@ ja:
         activated_at: "で活性化"  #g
         password_token: "パスワードのトークン"  #g
         password_token_expires_at: "パスワードがトークンの有効期限"  #g
-        mobile_identity: "モバイルアイデンティティ"  #g
         deals: "お得な情報"  #g
         expenses: "費用"  #g
         preferences: "設定"  #g
@@ -202,7 +209,6 @@ ja:
         name: "名前"
 
       preferences:
-        deals_scroll_height: "お得な高さをスクロール"  #g
         color: "カラー"  #g
         business_use: "ビジネスユース"  #g
         use_daily_booking: "毎日の予約を使用してください"  #g
@@ -248,7 +254,6 @@ ja:
         password_confirmation: "パスワード（確認）"
         password_token: "パスワードのトークン"  #g
         password_token_expires_at: "パスワードがトークンの有効期限"  #g
-        mobile_identity: "モバイルアイデンティティ"  #g
         preferences: "設定"  #g
         expenses: "費用"  #g
         deals: "お得な情報"  #g

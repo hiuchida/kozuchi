@@ -1,16 +1,68 @@
-# -*- encoding : utf-8 -*-
 require 'builder/xmlmarkup' # TODO:
 
-class Account::Base < ActiveRecord::Base
+class Account::Base < ApplicationRecord
 
   self.table_name = "accounts"
 
   include Account::Common
   
-  has_many :entries, :class_name => "Entry::Base", :foreign_key => "account_id"
-  has_many :balances, :class_name => "Entry::Balance", :foreign_key => "account_id"
+  has_many :entries,         :class_name => "Entry::Base",    :foreign_key => "account_id"
+  has_many :general_entries, :class_name => "Entry::General", :foreign_key => "account_id"
+  has_many :balances,        :class_name => "Entry::Balance", :foreign_key => "account_id"
 
   has_many :deals,  ->{ order(:date, :daily_seq) }, through: :entries
+
+  has_many :result_settlements, through: :entries
+
+  scope :active,     -> { where(active: true) }
+  scope :inactive,   -> { where(active: false) }
+
+  scope :expense,           -> { where(type: "Account::Expense") }
+
+  scope :join_entries_and_deals, -> { joins("inner join account_entries on accounts.id = account_entries.account_id inner join deals on account_entries.deal_id = deals.id") }
+  scope :join_confirmed_entries, -> { joins(sanitize_sql_array(["INNER JOIN account_entries on accounts.id = account_entries.account_id AND account_entries.confirmed = ?", true])) }
+
+  def asset?
+    false
+  end
+
+  def expense?
+    false
+  end
+
+  def income?
+    false
+  end
+
+  def any_credit?
+    false
+  end
+
+  def self.has_kind?
+    false
+  end
+
+  # クレジットカード用 デフォルトの記入探索期間を返す
+  def term_for_settlement_paid_on(monthly_date)
+    # TODO: 設定に出す
+    term_margin = 7
+
+    end_month = monthly_date.beginning_of_month << settlement_closed_on_month
+    end_date = [end_month + (settlement_closed_on_day - 1), end_month.end_of_month].min
+    start_date = (end_date << 1) - term_margin
+
+    [start_date, end_date]
+  end
+
+  # flow_sum を関連起点で無くした版
+  # 指定した期間における指定した口座のフロー合計を得る。end_date は exclusive なので注意
+  def self.total_flow(start_date, end_date)
+    join_confirmed_entries.merge(Entry::Base.in_a_time_between(start_date, end_date).not_initial_balance).sum("account_entries.amount").to_i
+  end
+
+  def total_flow(start_date, end_date)
+    self.class.where(id: id).total_flow(start_date, end_date)
+  end
 
   # この勘定の残高記入を日時のはやいほうからsaveしなおしていくことで、残高計算を正しくする
   # ツールとして利用する
@@ -167,7 +219,18 @@ class Account::Base < ActiveRecord::Base
   end
 
   # 口座別計算メソッド
-  
+
+  # NOTE: 最新版...^^;
+  # TODO: 資産合計はこれを使ったほうがはやそう
+  def self.balance_before_date(date)
+    join_confirmed_entries.merge(Entry::Base.before_or_initial(date)).sum(:amount) || 0
+  end
+
+  # おそらく balance_before とほぼ同じ
+  def balance_before_date(date)
+    self.class.where(id: id).balance_before_date(date)
+  end
+
   # 指定された日付より前の時点での残高を計算して balance に格納する
   def balance_before(date, daily_seq = 0, ignore_initial = false)
 #    p "balance_before : #{date.to_s(:db)} - #{daily_seq} : #{ignore_initial}"

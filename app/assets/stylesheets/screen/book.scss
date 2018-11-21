@@ -1,0 +1,514 @@
+/* ============== 共通情報　=============== */
+
+@import 'variables.scss';
+
+$disabled_light_color: #dddddd;
+
+/* 上下の margin に関する汎用部品 */
+.top_box {
+  margin-bottom: 8px;
+}
+.middle_box {
+  margin: 8px 0px;
+}
+.bottom_box {
+  margin-top: 8px;
+}
+
+/* 選択可能エリア */
+.clickable_text {
+  border: 1px outset gold;
+  background-color: lightyellow;
+
+  .deal_pattern {
+    background-color: #ffeddb;
+  }
+}
+
+#user_and_today {
+  background-color: indigo;
+  color: white;
+  font-weight: bold;
+  padding: 4px;
+  cursor: pointer;
+}
+
+a.disabled, a:hover.disabled, a:active.disabled, a:visited.disabled {
+  color: black;
+  text-decoration: none;
+  cursor: default;
+}
+
+/* フォーム地 */
+
+.tabsheet, .form_box {
+  border: 2px solid #ffffb2;
+  padding: 4px;
+  background-color: #ffffcc;
+}
+
+/* フォーム内テーブル */
+.form_box table.form_fields th {
+  text-align: left;
+  vertical-align: top;
+  padding-top: 1em;
+  padding-bottom: 1em;
+}
+
+table.horizontal th, table.horizontal td {
+  border-bottom: 2px solid #FFFFF9;
+  padding-bottom: 4px;
+}
+
+/* number fields */
+input.number, .datebox input, #deal_amount, #deal_balance {
+  ime-mode:disabled;
+  text-align: right;
+}
+
+/* text fields */
+#deal_summary {
+  ime-mode:active;
+}
+
+.window {
+  border: 1px dashed darkgoldenrod;
+  margin-bottom: 16px;
+  padding: 4px;
+}
+
+/* IE 対策 */
+.scroll_inner_box {
+  padding-right:1em;
+}
+
+.book {
+  background-color: #EFEFEF;
+  border: 1px solid #d3d3d8;
+
+  /* 更新行ハイライト */
+  .updated_line td {
+    background-color: pink;
+  }
+
+  td, tbody tr td {
+    padding: 2px;
+    background-color: white;
+  }
+
+  td.date, td.number {
+    vertical-align: top;
+  }
+
+  .timestamps {
+    font-size: 9px;
+    width: 180px;
+    text-align: left;
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    padding: 4px;
+    background-color: #FFFFCC;
+    color: #000000;
+    border: 1px solid #FFDDBC;
+    display: none;
+  }
+
+}
+
+.book_header {
+  background-color: #EFEFEF;
+  border: 1px solid #d3d3d8;
+
+  th, tbody tr th {
+    padding: 2px;
+    background-color: #efefef;
+    text-align: center;
+  }
+}
+
+.scroll_box {
+  height: 200px;
+  overflow-y: scroll;
+  overflow-x: hidden;
+  width: 100%;
+  border-bottom: 1px solid darkgoldenrod;
+}
+
+th.scroll_space {
+  width: 0.6em;
+}
+
+
+td.action, th.action {
+  width: 2.5em;
+  text-align: center;
+}
+
+td.button_action, th.button_action {
+  width: 5em;
+  text-align: center;
+}
+
+
+
+.balance_line td {
+  color: blue;
+}
+
+td.summary {
+  vertical-align: top;
+}
+
+/* マスタメンテナンステーブル */
+table.masters {
+  background-color: #FFDDBC;
+  border: 1px solid #FFDDBC;
+  width:100%;
+}
+
+.masters td {
+  border: 1px inset #fff2e5;
+  background-color: #fff2e5;
+  padding: 2px;
+}
+
+.masters th {
+  border: 1px inset #FFDDBC;
+  background-color: #FFDDBC;
+  padding: 2px;
+}
+
+.automatic {
+  color: blue;
+}
+
+.inner_table {
+  vertical-align: top;
+}
+
+.graph {
+  vertical-align: middle;
+  text-align: center;
+  border: 2px solid #D3D3D8;
+  color: black;
+  font-weight: bold;
+  background-color: white;
+}
+
+
+tr.unconfirmed td, span.unconfirmed  {
+  color: gray;
+}
+span.system, span.system_button {
+  background-color: gold;
+}
+
+/* ガイド欄 */
+p.guide {
+  border: 4px dotted #FFDDBC;
+  padding: 8px;
+  margin: 4px;
+  color: black;
+  background-color: white;
+  line-height: 1.5em;
+}
+span.guide_title {
+  font-weight: bold;
+}
+
+ul {
+  padding-left: 16px;
+}
+
+.jump {
+  font-size: 80%;
+  width:2em;
+  text-align: right;
+  white-space: nowrap;
+}
+
+input.readonly {
+  background-color: floralwhite;
+}
+
+.system_button {
+  border: 1px outset goldenrod; 
+}
+a.small_button, .action a {
+  border: 1px outset #FFDDBC; 
+  background-color: #FFDDBC;
+  color: gray;
+  text-decoration: none;
+}
+.buttons_line {
+  text-align: center;
+}
+
+/* ========== 固有情報　=============== */
+
+/* ------- top level ------------*/
+
+/* -------- sidebar -------*/
+#sidebar {
+  clear: both;
+  float: left;
+  width: 13%;
+
+  .side_menu {
+    border: 0;
+    background-color: #FFDDBC;
+    padding: 4px;
+  }
+
+  .side_menu, .side_menu_current {
+    white-space: nowrap;
+    margin: 8px 0px;
+    overflow: hidden;
+    border: 0;
+    padding: 4px;
+    font-weight: bold;
+  }
+
+  .side_menu_current {
+    background-color: #ffb7db;
+    color: black;
+  }
+}
+
+/* -------- contents -------*/
+#contents {
+  float:right;
+  width: 86%;
+  padding-left: 4px;
+
+  .title {
+    font-size: 120%;
+    font-weight: bold;
+    margin-bottom: 4px;
+  }
+
+}
+
+
+/*　------ 入力欄  ------- */
+
+/* 編集欄 */
+.book tr.edit_deal_row td {
+  padding: 0;
+}
+
+/* 登録・編集共通 */
+
+// 日付欄は相対位置指定で幅が限られる
+.deal_editor {
+  position: relative;
+
+  .datebox {
+    position: absolute;
+    left: 2px;
+    padding: 4px 4px 0 4px;
+    background: #FFFFCC;
+
+    input {
+      padding: 0 4px 0 4px;
+    }
+
+    input#date_year {
+      width: 60px;
+    }
+
+    input#date_month, #date_day {
+      width: 40px;
+    }
+  }
+
+  #deal_form {
+
+    .deal_fields {
+      padding-top: 32px;
+
+      .entry {
+        margin-top: 2px;
+        clear: left;
+        div {
+          padding: 4px 0;
+        }
+      }
+
+      input.amount {
+        width: 120px;
+      }
+    }
+  }
+}
+
+#edit_window {
+  background: #FFFFCC;
+
+  .deal_editor {
+    margin-right: 20px; // ×ボタン分を避ける
+
+    .datebox {
+      top: 0px;
+    }
+  }
+
+  #deal_form {
+    padding: 4px;
+
+    .deal_fields {
+      padding-left: 2px;
+    }
+  }
+
+  #errorExplanation {
+    background: #ffffff;
+  }
+}
+
+#new_deal_window {
+  h3 {
+    margin-top: 6px;
+    position: absolute;
+  }
+
+  .deal_editor {
+    margin-top: 12px;
+
+    .datebox {
+      top: 38px;
+    }
+
+    .tabbuttons {
+      height: 36px;
+      a.btn {
+        margin-left: 2px;
+        width: 90px;
+      }
+    }
+
+    #tabsheet {
+      border: $sub_dark_color 2px solid;
+    }
+  }
+}
+
+#deal_form {
+  .deal_patterns {
+    float: right;
+    text-align: right;
+  }
+}
+
+/* ================ 機能別 =================== */
+
+/* ------ 口座別出納：口座選択欄 --------*/
+
+/* 利益・損益のレポートエリア */
+.result {
+  white-space: nowrap;
+  margin: 10px 100px;
+  padding: 6px;
+  border-top: 6px double #D3D3D8;
+  border-bottom: 6px double #D3D3D8;
+  text-align: center;
+  font-weight: bold;
+  font-size: 24px;  
+}
+.profit {
+  color: darkgreen;
+}
+
+.loss {
+  color: darkred;
+}
+
+
+/* ==== 貸借対照表 ==== */
+table.balance_sheet {
+  width: 100%;
+
+  tr td {
+    width: 50%;
+    vertical-align: top;
+  }
+
+  table.details {
+    width: 100%;
+    background-color: darkgoldenrod;
+  }
+
+  table.details th {
+    background-color: goldenrod;
+  }
+
+  table.details td {
+    background-color: white;
+  }
+
+}
+
+
+#money_counting {
+  padding: 4px;
+  border: 1px solid #ffee88;
+  background-color: #ffffdd;
+
+  .field {
+    padding: 2px;
+    text-align: right;
+    width: 18%;
+    float: left;
+
+    input {
+      text-align: right;
+    }
+  }
+
+  #count_money_button {
+    width: 90px;
+  }
+
+}
+
+.deal_editor {
+  .entry div {
+    float: left;
+  }
+
+  .errorExplanation {
+    border: 1px solid orange;
+    padding: 4px;
+  }
+
+  .errorExplanation h2 {
+    font-size: 100%;
+  }
+}
+
+table.book, table.book_header {
+  border-collapse: separate;
+  border-spacing: 2px;
+  border-color: gray;
+  border: 0;
+}
+
+/* 精算 */
+.book tbody tr.disabled td {
+  background-color: #dddddd;
+}
+.end_of_month_button {
+  margin: 0 10px 0 10px;
+  font-size: 14px;
+  padding: 2px 4px;
+  text-decoration: none;
+  color: #000000;
+  background-color: #FFDDBC;
+  border: 1px solid #000000;
+  cursor: pointer;
+}
+
+table.book a.account {
+  color: #041A61;
+}

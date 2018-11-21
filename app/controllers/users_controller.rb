@@ -1,11 +1,10 @@
 # -*- encoding : utf-8 -*-
 class UsersController < ApplicationController
-  skip_before_filter :login_required, :except => [:destroy, :edit]
+  skip_before_action :login_required, :except => [:destroy, :edit]
   menu_group "設定"
   menu "プロフィール", :only => [:edit, :update]
 
-  before_filter :password_token_required, :only => [:edit_password, :update_password]
-#  layout 'login'
+  before_action :password_token_required, :only => [:edit_password, :update_password]
   cache_sweeper :export_sweeper, :only => [:destroy]
 
   # render new.rhtml
@@ -57,7 +56,7 @@ class UsersController < ApplicationController
       return
     end
     user.update_password_token
-    UserMailer.password_notification(user).deliver
+    UserMailer.password_notification(user).deliver_now
     @email = params[:email]
   end
   
@@ -88,7 +87,6 @@ class UsersController < ApplicationController
   end
   
   def edit
-    render :layout => 'main'
     @user = self.current_user
   end
   
@@ -99,7 +97,7 @@ class UsersController < ApplicationController
       redirect_to edit_user_path
       return
     end
-    render action: 'edit', layout: 'main'
+    render action: 'edit'
   end
 
   def privacy_policy

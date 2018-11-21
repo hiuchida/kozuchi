@@ -1,9 +1,12 @@
-# -*- encoding : utf-8 -*-
 class Account::Expense < Account::Base
   type_order 2
   type_name '費目'
   short_name '支出'
   connectable_type Account::Income
+
+  def expense?
+    true
+  end
 
   # TODO: Rails 2.2
   def self.human_name

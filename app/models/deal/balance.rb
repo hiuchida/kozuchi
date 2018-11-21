@@ -20,12 +20,17 @@ class Deal::Balance < Deal::Base
 
   delegate :account_id=, :account_id, :account, :balance=, :balance, :balance_before_type_cast, :amount, :summary, :initial_balance?, :balance_before, :to => :prepared_entry
 
+  def balance?
+    true
+  end
+
   def build_entry
     super
     # あれば入れる。登録前にも入れる
     entry.user_id = user_id
     entry.date = date
     entry.daily_seq = daily_seq
+    entry.confirmed = confirmed
     entry
   end
 
@@ -84,6 +89,7 @@ class Deal::Balance < Deal::Base
     entry.date = date
     raise "no daily_seq" unless daily_seq
     entry.daily_seq = daily_seq
+    entry.confirmed = confirmed
   end
 
   def cache_account_id

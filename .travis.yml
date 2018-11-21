@@ -1,6 +1,11 @@
 language: ruby
 rvm:
-  - ruby-2.1.0
+  - ruby-2.3.3
+
+addons:
+  apt:
+    packages:
+      - fonts-ipafont
 
 before_script:
   - export DISPLAY=:99.0

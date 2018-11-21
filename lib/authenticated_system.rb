@@ -10,7 +10,7 @@ module AuthenticatedSystem
     # Accesses the current user from the session. 
     # Future calls avoid the database because nil is not equal to false.
     def current_user
-      @current_user ||= (login_from_session || login_from_basic_auth || login_from_cookie || login_from_mobile_identity) unless @current_user == false
+      @current_user ||= (login_from_session || login_from_basic_auth || login_from_cookie) unless @current_user == false
     end
 
     # Store the given user id in the session.
@@ -39,15 +39,15 @@ module AuthenticatedSystem
     #
     # To require logins for all actions, use this in your controllers:
     #
-    #   before_filter :login_required
+    #   before_action :login_required
     #
     # To require logins for specific actions, use this in your controllers:
     #
-    #   before_filter :login_required, :only => [ :edit, :update ]
+    #   before_action :login_required, :only => [ :edit, :update ]
     #
     # To skip this in a subclassed controller:
     #
-    #   skip_before_filter :login_required
+    #   skip_before_action :login_required
     #
     def login_required
       authorized? || access_denied
@@ -111,12 +111,6 @@ module AuthenticatedSystem
       if user && user.remember_token?
         cookies[:auth_token] = { :value => user.remember_token, :expires => user.remember_token_expires_at }
         self.current_user = user
-      end
-    end
-
-    def login_from_mobile_identity
-      if request.mobile? && !request.mobile.ident.blank?
-        self.current_user = User.authenticate_with_mobile_identity(request.mobile.ident, request.user_agent)
       end
     end
 end

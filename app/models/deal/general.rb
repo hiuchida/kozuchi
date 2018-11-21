@@ -24,6 +24,10 @@ class Deal::General < Deal::Base
   after_destroy :request_unlinkings
   attr_accessor :for_linking # リンクのための save かどうかを見分ける
 
+  def general?
+    true
+  end
+
   # 貸借1つずつentry（未保存）を作成する
   def build_simple_entries
     error_if_not_empty
@@ -91,22 +95,7 @@ class Deal::General < Deal::Base
       creditor_entries.size > 1 ? '諸口' : creditor_entries.first.account.name
     end
   end
-
-  # 後の検索効率のため、idで妥協する
-  scope :recent_summaries, ->(keyword) {
-    select("account_entries.summary, max(deals.id) as id"
-    ).joins("inner join account_entries on account_entries.deal_id = deals.id"
-    ).group("account_entries.summary"
-    ).where("account_entries.summary like ?", "#{keyword}%"
-    ).order("deals.id desc"
-    ).limit(5)
-  }
-
-  scope :with_account, ->(account_id, debtor) {
-    # account_entries との join はされている想定
-    where("account_entries.account_id = ? and account_entries.creditor = ?", account_id, !debtor)
-  }
-
+  
   # summary の前方一致で検索する
   def self.search_by_summary(user_id, summary_key, limit, account_id = nil, debtor = true)
     begin
@@ -163,9 +152,8 @@ class Deal::General < Deal::Base
 
   # 指定したユーザーの指定した取引に紐づいたentryの配列を返す
   def linked_entries(remote_user_id, remote_ex_deal_id, reload = false)
-    readonly_entries(reload).find_all{|e| e.linked_user_id == remote_user_id && e.linked_ex_deal_id == remote_ex_deal_id}
+    (reload ? readonly_entries.reload : readonly_entries).find_all{|e| e.linked_user_id == remote_user_id && e.linked_ex_deal_id == remote_ex_deal_id}
   end
-
 
   def unlink(sender_id, sender_ex_deal_id)
     if confirmed?
@@ -200,6 +188,7 @@ class Deal::General < Deal::Base
     super
     entry.date = date
     entry.daily_seq = daily_seq
+    entry.confirmed = confirmed
     entry
   end
 
@@ -226,21 +215,21 @@ class Deal::General < Deal::Base
 
   # 完成された entry 情報をもとに、紐づいている（と認識している）ユーザーの配列を返す
   def linked_receiver_ids(reload = false)
-    receiver_ids = readonly_entries(reload).map{|e| e.linked_user_id}.compact
+    receiver_ids = (reload ? readonly_entries.reload : readonly_entries).map{|e| e.linked_user_id}.compact
     receiver_ids.uniq!
     receiver_ids
   end
 
   # 各 entry の口座情報をもとに、こちらから連携依頼を送るべきユーザーの配列を返す
   def updated_receiver_ids(reload = false)
-    receiver_ids = readonly_entries(reload).map{|e| e.account.destination_account}.compact.map(&:user_id)
+    receiver_ids = (reload ? readonly_entries.reload : readonly_entries).map{|e| e.account.destination_account}.compact.map(&:user_id)
     receiver_ids.uniq!
     receiver_ids
   end
 
   # 各 entry の口座情報をもとに、相手から連携依頼が来ると認識しているユーザーの配列を返す
   def updated_sender_ids(reload = false)
-    sender_ids = readonly_entries(reload).map{|e| e.account.link_requests.map(&:sender_id)}.flatten
+    sender_ids = (reload ? readonly_entries.reload : readonly_entries).map{|e| e.account.link_requests.map(&:sender_id)}.flatten
     sender_ids.uniq!
     sender_ids
   end
@@ -280,10 +269,10 @@ class Deal::General < Deal::Base
     end
 
     if changed_self
-      debtor_entries(true)
-      creditor_entries(true)
-      readonly_entries(true)
-      entries(true)
+      debtor_entries.reload
+      creditor_entries.reload
+      readonly_entries.reload
+      entries.reload
     end
     true
   end
@@ -296,7 +285,7 @@ class Deal::General < Deal::Base
   # destination_account に指定されている先へは request_linkings の処理で confirmed は反映されるので
   # 指定されていない先へ連絡する
   def respond_to_sender_when_confirmed
-    return true unless confirmed_changed?
+    return true unless saved_change_to_attribute?(:confirmed)
     sender_ids = linked_receiver_ids - updated_receiver_ids
     sender_ids.each do |sender_id|
       sender = User.find(sender_id)

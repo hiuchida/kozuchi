@@ -3,7 +3,6 @@ require 'spec_helper'
 
 describe Pattern::Entry do
   fixtures :accounts, :users, :account_links, :friend_permissions, :friend_requests
-  set_fixture_class  :accounts => Account::Base
 
   describe ".new" do
     it do
@@ -12,22 +11,22 @@ describe Pattern::Entry do
   end
 
   describe "#valid?" do
-    let(:entry) {FactoryGirl.build(:entry_pattern)}
+    let(:entry) {build(:entry_pattern)}
 
     it "正しい情報を与えたときにtrueとなる" do
-      entry.should be_valid
+      expect(entry).to be_valid
     end
 
     it_behaves_like "valid? when including ::Entry"
   end
 
   describe "create" do
-    let(:entry) {FactoryGirl.build(:entry_pattern)}
+    let(:entry) {build(:entry_pattern)}
     it_behaves_like "save when including ::Entry"
   end
 
   describe "update" do
-    let(:entry) {FactoryGirl.build(:entry_pattern)}
+    let(:entry) {build(:entry_pattern)}
     it_behaves_like "save when including ::Entry"
   end
 

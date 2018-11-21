@@ -15,12 +15,9 @@ class DealSuggestionsController < ApplicationController
     @patterns = if summary_key.blank?
       []
     else
-      # TODO: AccountEntryにサマリーが移動したのでロジックを変えたい
-      recent_summaries = current_user.general_deals.recent_summaries(summary_key)
-      if account
-        recent_summaries = recent_summaries.with_account(account.id, params[:debtor] == 'true')
-      end
-      deals = Deal::General.order(id: :desc).find(recent_summaries.map(&:id))
+      recent_summaries = current_user.general_entries.recent_summaries(summary_key)
+      recent_summaries = recent_summaries.of(account.id) if account
+      deals = Deal::General.order(id: :desc).find(recent_summaries.map(&:deal_id))
 
       patterns = current_user.deal_patterns.contains(summary_key).recent.limit(5)
       patterns = patterns.with_account(account.id, params[:debtor] == 'true') if account
@@ -38,10 +35,7 @@ class DealSuggestionsController < ApplicationController
       @general_callback = 'onGeneralDealSelectedFromGeneral'
     end
 
-#    @patterns = summary_key.blank? ? [] : current_user.general_deals.with_summary_and_dates(
-#      current_user.general_deals.recent_summaries(summary_key)).ordered_by_date
-#    @patterns = Deal::General.search_by_summary(current_user.id, summary_key, 5, account.try(:id), params[:debtor] == 'true')
-    render(:partial => 'patterns')
+    render partial: 'patterns'
   end
 
 end

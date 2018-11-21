@@ -1,0 +1,82 @@
+/* ===============  印刷用スタイルシート ======================= */
+
+/* 共通部品 */
+
+table.book_header {
+  border-collapse: collapse;
+  border-bottom: 4px double black;
+
+  th {
+    border: 1px solid black;
+  }
+}
+
+table.book {
+  border-collapse: collapse;
+
+  td {
+    border: 1px solid black;
+  }
+
+  th {
+    border: 1px solid black;
+  }
+}
+
+.action {
+  display: none;
+}
+
+
+/* 特定部品 */
+
+#contents .title {
+  font-size: 120%;
+  font-weight: bold;
+  margin-bottom: 4px;
+}
+
+header {
+  display: none;
+}
+
+div.for_deal_editor div#deals_left {
+  display: none;
+}
+
+div#deals_right {
+  display: none;
+}
+
+div#settlements_left {
+  display: none;
+}
+
+div#settlements_right {
+  display: none;
+}
+
+div#calendar_form {
+  display: none;
+}
+
+div#new_deal_window {
+  display: none;
+}
+
+ul#monthly_deals_body_tab li {
+  display: none;
+}
+
+ul#monthly_deals_body_tab li.active {
+  display: block;
+}
+
+footer {
+  margin-top: 16px;
+  text-align:right;
+  font-size:small;
+  padding-bottom:2px;
+  padding-top:16px;
+}
+

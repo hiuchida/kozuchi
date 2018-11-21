@@ -1,9 +1,8 @@
 # -*- encoding : utf-8 -*-
 class ExportController < ApplicationController
-  layout 'main'
   menu_group "データ管理"
   menu "エクスポート"
-  after_filter :cache_export, :only => [:whole]
+  after_action :cache_export, :only => [:whole]
 
   def index
     @export_file_name = "kozuchi-#{Date.today.to_s(:db)}"

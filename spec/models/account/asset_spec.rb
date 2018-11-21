@@ -2,10 +2,9 @@
 require 'spec_helper'
 
 describe "Account::Asset", :no_deals_and_patterns do
-  self.use_transactional_fixtures = true
+  self.use_transactional_tests = true
   fixtures :users, :accounts
-  set_fixture_class  :accounts => Account::Base
-  
+
   before do
     @user = users(:taro)
     @capital_fund = @user.assets.create!(:name => "資本金", :asset_kind => "capital_fund")
@@ -22,19 +21,19 @@ describe "Account::Asset", :no_deals_and_patterns do
     end
     context "Dealに使われているとき" do
       before do
-        FactoryGirl.create(:general_deal)
+        create(:general_deal)
       end
       it "削除できない" do
-        expect{ account.destroy }.to raise_error
+        expect{ account.destroy }.to raise_error(Account::Base::UsedAccountException)
       end
     end
     context "Pattern::Dealに使われているとき" do
       before do
-        FactoryGirl.create(:deal_pattern,
+        create(:deal_pattern,
           :debtor_entries_attributes => [{:line_number => 0, :account_id => Fixtures.identify(:taro_cache), :summary => '給料', :amount => 210000 }, { :line_number => 1, :account_id => Fixtures.identify(:taro_tax), :amount => 20000, :summary => '所得税'}])
       end
       it "削除できない" do
-        expect{ account.destroy }.to raise_error
+        expect{ account.destroy }.to raise_error(Account::Base::UsedAccountException)
       end
     end
   end
@@ -42,18 +41,18 @@ describe "Account::Asset", :no_deals_and_patterns do
 
   describe "capital_fund?" do
     it "資本金口座でtrueになること" do
-      @capital_fund.capital_fund?.should be_true
+      expect(@capital_fund.capital_fund?).to be_truthy
     end
     it "クレジットカード口座でfalseになること" do
-      @credit_card.capital_fund?.should be_false
+      expect(@credit_card.capital_fund?).to be_falsey
     end
   end
   describe "credit_card?" do
     it "資本金口座でfalseになること" do
-      @capital_fund.credit_card?.should be_false
+      expect(@capital_fund.credit_card?).to be_falsey
     end
     it "クレジットカード口座でtrueになること" do
-      @credit_card.credit_card?.should be_true
+      expect(@credit_card.credit_card?).to be_truthy
     end
   end
 
@@ -64,13 +63,13 @@ describe "Account::Asset", :no_deals_and_patterns do
         @xml = @credit_card.to_xml(:camelize => true, :skip_types => true, :only => [:name])
       end
       it "要素名が型にちなんでいること" do
-        @xml.should =~ /<asset.*>.*<\/asset>/
+        expect(@xml =~ /<asset.*>.*<\/asset>/).to be_truthy
       end
       it "XMLにasset_kindが含まれること" do
-        @xml.should =~ /type="credit_card"/
+        expect(@xml =~ /type="credit_card"/).to be_truthy
       end
       it "XMLにidが含まれること" do
-        @xml.should =~ /id="account/
+        expect(@xml =~ /id="account/).to be_truthy
       end
     end
   end
@@ -81,7 +80,7 @@ describe "Account::Asset", :no_deals_and_patterns do
       @csv = @credit_card.to_csv
     end
     it "想定の形であること" do
-      @csv.should == "asset,#{@credit_card.id},credit_card,#{@credit_card.sort_key},\"クレジットカード\""
+      expect(@csv).to eq "asset,#{@credit_card.id},credit_card,#{@credit_card.sort_key},\"クレジットカード\""
     end
   end
 
@@ -92,17 +91,17 @@ describe "Account::Asset", :no_deals_and_patterns do
       @cache = accounts(:taro_cache)
     end
     it "記入が１つもないとき0であること" do
-      @cache.balance_before(Date.new(2009, 4, 1)).should == 0
+      expect(@cache.balance_before(Date.new(2009, 4, 1))).to eq 0
     end
     describe "残高記入がシステム内になく、4/1に400円の食費を払った記入だけがある場合" do
       before do
         create_deal :taro_cache, :taro_food, 400, 4, 1
       end
       it "4/2より前の残高は-400であること" do
-        @cache.balance_before(Date.new(2009, 4, 2)).should == -400
+        expect(@cache.balance_before(Date.new(2009, 4, 2))).to eq -400
       end
       it "4/1より前の残高は0であること" do
-        @cache.balance_before(Date.new(2009, 4, 1)).should == 0
+        expect(@cache.balance_before(Date.new(2009, 4, 1))).to eq 0
       end
     end
     describe "4/1に400円の食費を払い、4/2に残高3000円を記入した場合" do
@@ -112,10 +111,10 @@ describe "Account::Asset", :no_deals_and_patterns do
         create_balance :taro_cache, 3000, 4, 2
       end
       it "4/3より前の残高は3000であること" do
-        @cache.balance_before(Date.new(2009, 4, 3)).should == 3000
+        expect(@cache.balance_before(Date.new(2009, 4, 3))).to eq 3000
       end
       it "4/1より前の残高は3400であること" do
-        @cache.balance_before(Date.new(2009, 4, 1)).should == 3400
+        expect(@cache.balance_before(Date.new(2009, 4, 1))).to eq 3400
       end
 
     end
